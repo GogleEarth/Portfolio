@@ -37,18 +37,24 @@ int Framawork::thread_process()
 		if (false == is_error) {
 			int err_no = WSAGetLastError();
 			if (64 == err_no) {
-				disconnect_client(index);
-				std::wcout << clients_[index].name_ << L" 접속 종료\n";
-				lstrcpynW(clients_[index].name_, L"라마바", MAX_NAME_LENGTH);
+				if (clients_[index].socket_ != INVALID_SOCKET)
+				{
+					disconnect_client(index);
+					std::wcout << index << L"번 플레이어 접속 종료\n";
+					lstrcpynW(clients_[index].name_, L"라마바", MAX_NAME_LENGTH);
+				}
 				continue;
 			}
 			else error_display("GQCS : ", err_no);
 		}
 
 		if (0 == io_byte) {
-			disconnect_client(index);
-			std::wcout << clients_[index].name_ << L" 접속 종료\n";
-			lstrcpynW(clients_[index].name_, L"라마바", MAX_NAME_LENGTH);
+			if (clients_[index].socket_ != INVALID_SOCKET)
+			{
+				disconnect_client(index);
+				std::wcout << index << L"번 플레이어 접속 종료\n";
+				lstrcpynW(clients_[index].name_, L"라마바", MAX_NAME_LENGTH);
+			}
 			continue;
 		}
 
@@ -541,7 +547,7 @@ int Framawork::accept_process()
 			continue;
 		}
 
-		std::cout << "플레이어 접속\n";
+		//std::cout << "플레이어 접속\n";
 
 		clients_[new_id].socket_ = client_socket;
 		clients_[new_id].prev_size_ = 0;
@@ -631,13 +637,16 @@ void Framawork::do_recv(int id)
 {
 	DWORD flags = 0;
 
-	if (WSARecv(clients_[id].socket_, &clients_[id].over_ex.wsa_buffer_, 1,
-		NULL, &flags, &(clients_[id].over_ex.overlapped_), 0))
+	if (clients_[id].socket_ != INVALID_SOCKET)
 	{
-		if (WSAGetLastError() != WSA_IO_PENDING)
+		if (WSARecv(clients_[id].socket_, &clients_[id].over_ex.wsa_buffer_, 1,
+			NULL, &flags, &(clients_[id].over_ex.overlapped_), 0))
 		{
-			std::cout << "Recv_Error\n";
-			while (true);
+			if (WSAGetLastError() != WSA_IO_PENDING)
+			{
+				std::cout << "Recv_Error\n";
+				while (true);
+			}
 		}
 	}
 }
@@ -689,8 +698,14 @@ void Framawork::disconnect_client(int id)
 			send_packet_to_all_player((char*)&pkt_cri);
 		}
 	}
+	
+	PKT_LOG_OUT_OK packet;
+	packet.PktId = PKT_ID_LOG_OUT_OK;
+	packet.PktSize = sizeof(PKT_LOG_OUT_OK);
+	send_packet_to_player(id, (char*)&packet);
 
 	closesocket(clients_[id].socket_);
+	clients_[id].socket_ = INVALID_SOCKET;
 	clients_[id].in_use_ = false;
 	clients_[id].in_room_ = false;
 }
@@ -710,7 +725,8 @@ int Framawork::search_client_in_room(SOCKET socket)
 
 void Framawork::process_packet(int id, char* packet)
 {
-	switch (packet[1])
+	int packet_id = packet[1];
+	switch (packet_id)
 	{
 	case PKT_ID_PLAYER_INFO:
 	{
@@ -862,7 +878,7 @@ void Framawork::process_packet(int id, char* packet)
 	case PKT_ID_ROOM_IN:
 	{
 		int room_num = reinterpret_cast<PKT_ROOM_IN*>(packet)->Room_num;
-		if (rooms_[room_num].get_num_player_in_room() < MAX_CLIENT && !rooms_[room_num].get_playing())
+		if (rooms_[room_num].get_is_use() && rooms_[room_num].get_num_player_in_room() < MAX_CLIENT && !rooms_[room_num].get_playing())
 		{
 			PKT_ROOM_IN_OK pkt_rio;
 			pkt_rio.PktId = PKT_ID_ROOM_IN_OK;
@@ -922,10 +938,10 @@ void Framawork::process_packet(int id, char* packet)
 			pkt_cmi.map = rooms_[room_num].get_map();
 			send_packet_to_all_player((char*)&pkt_cmi);
 
-			std::cout << id << "번 플레이어" << room_num << "번 방 입장\n";
+		//	std::cout << id << "번 플레이어" << room_num << "번 방 입장\n";
 		}
-		else
-			std::cout << id << "번 플레이어" << reinterpret_cast<PKT_ROOM_IN*>(packet)->Room_num << "번 방에 참가 실패\n";
+		//else
+		//	std::cout << id << "번 플레이어" << (int)reinterpret_cast<PKT_ROOM_IN*>(packet)->Room_num << "번 방에 참가 실패\n";
 		break;
 	}
 	case PKT_ID_SHOOT:
@@ -1109,7 +1125,7 @@ void Framawork::process_packet(int id, char* packet)
 	case PKT_ID_CHANGE_NAME:
 	{
 		PKT_CHANGE_NAME* pkt_cn = reinterpret_cast<PKT_CHANGE_NAME*>(packet);
-		std::wcout << id << L"번 플레이어의 이름을 " << clients_[id].name_ << L"에서 " << pkt_cn->name << L"로 변경\n";
+		//std::wcout << id << L"번 플레이어의 이름을 " << clients_[id].name_ << L"에서 " << pkt_cn->name << L"로 변경\n";
 		lstrcpynW(clients_[id].name_, pkt_cn->name, MAX_NAME_LENGTH);
 		break;
 	}
@@ -1165,29 +1181,34 @@ void Framawork::process_packet(int id, char* packet)
 		}
 		break;
 	}
+	case PKT_ID_LOG_OUT:
+	{
+		disconnect_client(id);
+		break;
+	}
 	default:
-		std::wcout << L"정의되지 않은 패킷 도착 오류!!\n";
+		std::wcout << L"정의되지 않은 패킷 도착 오류!! 패킷아이디 : " << (int)packet[1] <<"\n";
 		break;
 	}
 }
 
 void Framawork::send_packet_to_player(int id, char* packet)
 {
-	char *p = reinterpret_cast<char *>(packet);
-	Overlapped *ov = new Overlapped;
-	ov->wsa_buffer_.len = p[0];
-	ov->wsa_buffer_.buf = ov->packet_buffer_;
-	ov->event_type_ = EVENT_TYPE_SEND;
-	memcpy(ov->packet_buffer_, p, p[0]);
-	ZeroMemory(&ov->overlapped_, sizeof(ov->overlapped_));
-	int error = WSASend(clients_[id].socket_, &ov->wsa_buffer_, 1, 0, 0,
-		&ov->overlapped_, NULL);
-	if (0 != error) {
-		int err_no = WSAGetLastError();
-		if (err_no != WSA_IO_PENDING)
-		{
-			std::cout << "Send_Error\n";
-			error_display("WSASend in send_packet()  ", err_no);
+	char *p = packet;
+	if (clients_[id].socket_ != INVALID_SOCKET)
+	{
+		Overlapped *ov = new Overlapped;
+		ov->wsa_buffer_.len = p[0];
+		ov->wsa_buffer_.buf = ov->packet_buffer_;
+		ov->event_type_ = EVENT_TYPE_SEND;
+		memcpy(ov->packet_buffer_, p, p[0]);
+		ZeroMemory(&ov->overlapped_, sizeof(ov->overlapped_));
+		int error = WSASend(clients_[id].socket_, &ov->wsa_buffer_, 1, 0, 0,
+			&ov->overlapped_, NULL);
+		if (0 != error) {
+			int err_no = WSAGetLastError();
+			if (err_no != WSA_IO_PENDING)
+				error_display("WSASend in send_packet_to_player()  ", err_no);
 		}
 	}
 }
