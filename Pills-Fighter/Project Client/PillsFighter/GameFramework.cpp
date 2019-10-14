@@ -541,6 +541,7 @@ void CGameFramework::ProcessSceneReturnVal(int n)
 		BuildScene(SCENE_TYPE_LOBBY_MAIN);
 		m_pScene->SetCursorPosition(xmf2Pos);
 
+		SendToServer(PKT_ID_LOG_IN, NULL);
 		break;
 	}
 	case LOBBY_MOUSE_CLICK_GAME_EXIT:
@@ -774,7 +775,7 @@ void CGameFramework::FrameAdvance()
 	m_fElapsedTime = m_GameTimer.GetTimeElapsed();
 
 #ifdef ON_NETWORKING
-	if (m_pPlayer)
+	if (m_pPlayer && m_bLoadAll)
 	{
 		if (IsZero(m_fElapsedTime)) return;
 		SendToServer();
@@ -968,16 +969,12 @@ void CGameFramework::ProcessPacket()
 	}
 	case PKT_ID_UPDATE_OBJECT:
 	{
-		PKT_UPDATE_OBJECT *pPacket = (PKT_UPDATE_OBJECT*)m_pPacketBuffer;
-
-		m_pScene->ApplyRecvInfo(PKT_ID_UPDATE_OBJECT, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_UPDATE_OBJECT, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_DELETE_OBJECT:
 	{
-		PKT_DELETE_OBJECT *pPacket = (PKT_DELETE_OBJECT*)m_pPacketBuffer;
-
-		m_pScene->ApplyRecvInfo(PKT_ID_DELETE_OBJECT, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_DELETE_OBJECT, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_CREATE_EFFECT:
@@ -1022,6 +1019,8 @@ void CGameFramework::ProcessPacket()
 	case PKT_ID_LOAD_COMPLETE_ALL:
 	{
 		m_pScene->ApplyRecvInfo(PKT_ID_LOAD_COMPLETE_ALL, (LPVOID)m_pPacketBuffer);
+		std::cout << "전원 로드 완료\n";
+		m_bLoadAll = true;
 		break;
 	}
 	case PKT_ID_LOBBY_PLAYER_INFO:
@@ -1036,9 +1035,7 @@ void CGameFramework::ProcessPacket()
 	}
 	case PKT_ID_SCORE:
 	{
-		PKT_SCORE *pPacket = (PKT_SCORE*)m_pPacketBuffer;
-
-		m_pScene->ApplyRecvInfo(PKT_ID_SCORE, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_SCORE, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_GAME_END:
@@ -1048,9 +1045,7 @@ void CGameFramework::ProcessPacket()
 	}
 	case PKT_ID_PICK_ITEM:
 	{
-		PKT_SCORE *pPacket = (PKT_SCORE*)m_pPacketBuffer;
-
-		m_pScene->ApplyRecvInfo(PKT_ID_PICK_ITEM, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_PICK_ITEM, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_CHANGE_MAP:
@@ -1112,8 +1107,7 @@ void CGameFramework::ProcessPacket()
 	}
 	case PKT_ID_MAP_EVENT:
 	{
-		PKT_MAP_EVENT *pPacket = (PKT_MAP_EVENT*)m_pPacketBuffer;
-		m_pScene->ApplyRecvInfo(PKT_ID_MAP_EVENT, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_MAP_EVENT, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_CHANGE_NAME:
@@ -1124,14 +1118,17 @@ void CGameFramework::ProcessPacket()
 	}
 	case PKT_ID_PLAYER_DIE:
 	{
-		PKT_PLAYER_DIE *pPacket = (PKT_PLAYER_DIE*)m_pPacketBuffer;
-		m_pScene->ApplyRecvInfo(PKT_ID_PLAYER_DIE, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_PLAYER_DIE, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	case PKT_ID_PLAYER_RESPAWN:
 	{
-		PKT_PLAYER_RESPAWN *pPacket = (PKT_PLAYER_RESPAWN*)m_pPacketBuffer;
-		m_pScene->ApplyRecvInfo(PKT_ID_PLAYER_RESPAWN, (LPVOID)pPacket);
+		m_pScene->ApplyRecvInfo(PKT_ID_PLAYER_RESPAWN, (LPVOID)m_pPacketBuffer);
+		break;
+	}
+	case PKT_ID_KILL_MESSAGE:
+	{
+		m_pScene->ApplyRecvInfo(PKT_ID_KILL_MESSAGE, (LPVOID)m_pPacketBuffer);
 		break;
 	}
 	default:
@@ -1358,6 +1355,18 @@ void CGameFramework::SendToServer(PKT_ID pktID, void *pData)
 		PKT_MOVE_TO_MAIN_LOBBY pktToServer;
 		pktToServer.PktId = pktID;
 		pktToServer.PktSize = sizeof(pktToServer);
+
+		if (send(gSocket, (char*)&pktToServer, sizeof(pktToServer), 0) == SOCKET_ERROR)
+			printf("Send Change Map Error\n");
+		break;
+	}
+	case PKT_ID_LOG_IN:
+	{
+		PKT_LOG_IN pktToServer;
+		pktToServer.PktId = PKT_ID_LOG_IN;
+		pktToServer.PktSize = sizeof(PKT_LOG_IN);
+		lstrcpynW(pktToServer.id, L"asdf", MAX_NAME_LENGTH);
+		lstrcpynW(pktToServer.pass, L"asdf", MAX_NAME_LENGTH);
 
 		if (send(gSocket, (char*)&pktToServer, sizeof(pktToServer), 0) == SOCKET_ERROR)
 			printf("Send Change Map Error\n");

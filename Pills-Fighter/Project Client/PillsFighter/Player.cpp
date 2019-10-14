@@ -129,6 +129,15 @@ CCamera *CPlayer::SetCamera(float fTimeElapsed)
 	return(m_pCamera);
 }
 
+void CPlayer::SetHitPoint(int nHitPoint)
+{
+	int before = m_nHitPoint;
+	CGameObject::SetHitPoint(nHitPoint);
+	int after = m_nHitPoint;
+
+	if (before > after) m_pCamera->SetShake();
+}
+
 void CPlayer::Move(ULONG dwDirection, float fDistance)
 {
 	if (m_bDie) return;
@@ -398,6 +407,8 @@ void CPlayer::Update(float fTimeElapsed)
 	XMFLOAT3 xmf3LookAt = Vector3::Add(m_xmf3Position, XMFLOAT3(0.0f, 20.0f, 0.0f));
 	m_pCamera->SetLookAt(xmf3LookAt);
 	m_pCamera->GenerateViewMatrix();
+
+	m_xmf3PrevPosition = m_xmf3Position;
 }
 
 void CPlayer::Rotate(float x, float y, float z)

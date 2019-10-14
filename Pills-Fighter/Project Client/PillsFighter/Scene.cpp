@@ -62,16 +62,6 @@ void CScene::SetFont(ID3D12Device *pd3dDevice, CFont *pFont)
 	m_pFont = pFont;
 }
 
-CTextObject* CScene::AddText(const wchar_t *pstrText, XMFLOAT2 xmf2Position, XMFLOAT2 xmf2Scale, XMFLOAT2 xmf2Padding, XMFLOAT4 xmf4Color, int nType)
-{
-	return m_pFont->SetText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, pstrText, xmf2Position, xmf2Scale, xmf2Padding, xmf4Color, nType);
-}
-
-void CScene::ChangeText(CTextObject *pTextObject, const wchar_t *pstrText, XMFLOAT2 xmf2Position, XMFLOAT2 xmf2Scale, XMFLOAT2 xmf2Padding, XMFLOAT4 xmf4Color, int nType)
-{
-	m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, pTextObject, pstrText, xmf2Position, xmf2Scale, xmf2Padding, xmf4Color, nType);
-}
-
 int CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
 	return 0;
@@ -1413,18 +1403,20 @@ void CLobbyMainScene::CheckCollision()
 
 void CLobbyMainScene::ChangeInputNameText()
 {
-	m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, m_InputTextObject, m_pTextSystem->GetText(), XMFLOAT2(-0.325f, 0.06f), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	m_pFont->ChangeText(m_InputTextObject, m_pTextSystem->GetText(), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
+	m_InputTextObject->SetPosition(XMFLOAT2(-0.325f, 0.06f));
 }
 
 void CLobbyMainScene::ChangeInputRoomNameText()
 {
-	m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, m_InputTextObject, m_pTextSystem->GetText(), XMFLOAT2(-0.625f, 0.06f), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	m_pFont->ChangeText(m_InputTextObject, m_pTextSystem->GetText(), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
+	m_InputTextObject->SetPosition(XMFLOAT2(-0.625f, 0.06f));
 }
 
 void CLobbyMainScene::InitName(wchar_t *pwstrName)
 {
 	lstrcpynW(CScene::m_pwstrMyName, pwstrName, MAX_NAME_LENGTH);
-	m_InputTextObject = m_pFont->SetText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, CScene::m_pwstrMyName, XMFLOAT2(-0.325f, 0.06f), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	m_InputTextObject = m_pFont->SetText(CScene::m_pwstrMyName, XMFLOAT2(-0.325f, 0.06f), XMFLOAT2(3.0f, 3.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
 	m_pTextSystem->SetText(CScene::m_pwstrMyName);
 
 	CScene::m_bInitName = true;
@@ -1436,19 +1428,20 @@ void CLobbyMainScene::AddRoom(int n, wchar_t *name)
 
 	wchar_t pstrNumber[6];
 	wsprintfW(pstrNumber, L"%d", n);
-
 	newRoom.nRoom_num = n;
-	newRoom.pRoom_num = AddText(pstrNumber, XMFLOAT2(-0.943750f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
-	newRoom.pRoom_name = AddText(name, XMFLOAT2(-0.806250f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
-	newRoom.pRoom_map = AddText(L"콜로니", XMFLOAT2(0.389063f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
-	newRoom.pRoom_num_people = AddText(L"1/8", XMFLOAT2(0.776562f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
 
 	float yPos = (m_RoomStart + m_Rooms.size())* 0.1162f;
-	XMFLOAT3 xmf3Position = XMFLOAT3(0.0f, 0.765222f - yPos, 0.0f);
-	newRoom.pRoom_num->SetPosition(xmf3Position);
-	newRoom.pRoom_name->SetPosition(xmf3Position);
-	newRoom.pRoom_map->SetPosition(xmf3Position);
-	newRoom.pRoom_num_people->SetPosition(xmf3Position);
+	XMFLOAT2 xmf2Position;
+
+	xmf2Position = XMFLOAT2(-0.943750f, 0.765222f - yPos);
+	newRoom.pRoom_num = m_pFont->SetText(pstrNumber, xmf2Position, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	xmf2Position.x = -0.806250f;
+	newRoom.pRoom_name = m_pFont->SetText(name, xmf2Position, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	xmf2Position.x = 0.389063f;
+	newRoom.pRoom_map = m_pFont->SetText(L"콜로니", xmf2Position, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+	xmf2Position.x = 0.776562f;
+	newRoom.pRoom_num_people = m_pFont->SetText(L"1/8", xmf2Position, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+
 
 	m_Rooms.emplace_back(newRoom);
 }
@@ -1494,11 +1487,11 @@ void CLobbyMainScene::ChangeRoomInfo(int index, int map, int people)
 		if (room.nRoom_num == index)
 		{
 			if (map == SCENE_TYPE_COLONY)
-				m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, room.pRoom_map, L"콜로니", XMFLOAT2(0.389063f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+				m_pFont->ChangeText(room.pRoom_map, L"콜로니", XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
 			else if (map == SCENE_TYPE_SPACE)
-				m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, room.pRoom_map, L"스페이스", XMFLOAT2(0.389063f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+				m_pFont->ChangeText(room.pRoom_map, L"스페이스", XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
 
-			m_pFont->ChangeText(FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT, room.pRoom_num_people, pstr, XMFLOAT2(0.776562f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), LEFT_ALIGN);
+			m_pFont->ChangeText(room.pRoom_num_people, pstr, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
 		}
 	}
 }
@@ -1606,6 +1599,7 @@ void CLobbyMainScene::StartScene(bool bBGMStop)
 {
 	if(bBGMStop) gFmodSound.StopFMODSound(gFmodSound.m_pBGMChannel);
 	gFmodSound.PlayFMODSoundLoop(gFmodSound.m_pSoundLobbyBGM, &(gFmodSound.m_pBGMChannel));
+	gFmodSound.m_pBGMChannel->setVolume(0.3f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2112,7 +2106,7 @@ void CLobbyRoomScene::JoinPlayer(int nIndex, int nSlot, const wchar_t *pstrPlaye
 		xmf4Color.z = 0.0f;
 	}
 
-	m_pPlayerInfos[nIndex].m_pTextObject = AddText(pstrPlayerName, XMFLOAT2(0.0f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), xmf4Color, LEFT_ALIGN);
+	m_pPlayerInfos[nIndex].m_pTextObject = m_pFont->SetText(pstrPlayerName, XMFLOAT2(0.0f, 0.0f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), xmf4Color, LEFT_ALIGN);
 	m_pPlayerInfos[nIndex].m_pTextObject->SetPosition(xmf2Pos);
 }
 
@@ -2625,16 +2619,18 @@ void CBattleScene::SetAfterBuildObject(ID3D12Device *pd3dDevice, ID3D12GraphicsC
 	m_pMinimapShader = pMinimapShader;
 	//
 
-	m_pRedScoreText = AddText(L"0", XMFLOAT2(-0.05f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.5f, 0.0f, 0.0f, 0.9f), RIGHT_ALIGN);
-	m_pBlueScoreText = AddText(L"0", XMFLOAT2(0.02f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.5f, 0.9f), LEFT_ALIGN);
+	m_pRedScoreText = m_pFont->SetText(L"100", XMFLOAT2(-0.02f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.5f, 0.0f, 0.0f, 0.9f), RIGHT_ALIGN);
+	m_pBlueScoreText = m_pFont->SetText(L"100", XMFLOAT2(0.02f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.5f, 0.9f), LEFT_ALIGN);
 
 	CreateEnvironmentMap(pd3dDevice);
 	CreateCubeMapCamera(pd3dDevice, pd3dCommandList);
 	CreateShadowMap(pd3dDevice, pd3dCommandList, 4096 * 2, 4096 * 2);
 
-	if(m_vTeamIndex.size() > 0)
+	if (m_vTeamIndex.size() > 0)
+	{
 		CreateNameTextures(pd3dDevice, pd3dCommandList);
-
+		std::cout << "네임텍스쳐 완료\n";
+	}
 #ifndef ON_NETWORKING
 	m_pUserInterface->BattleNotifyStart();
 #endif
@@ -3052,67 +3048,74 @@ void CBattleScene::CreateNameTextures(ID3D12Device *pd3dDevice, ID3D12GraphicsCo
 	d3dDescriptorHeapDesc.NodeMask = 0;
 	HRESULT hResult = pd3dDevice->CreateDescriptorHeap(&d3dDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void **)&pd3dRTVHeap);
 
-	d3dHeapCPUHandle = pd3dRTVHeap->GetCPUDescriptorHandleForHeapStart();
-	d3dHeapGPUHandle = pd3dRTVHeap->GetGPUDescriptorHandleForHeapStart();
-
-	std::vector<CTextObject*>					vpTeamTextObject;
-	std::vector<ID3D12Resource*>				vpd3dTeamNameTexture;
-	std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>	vd3dTeamTextureRTVCPUHandle;
-	std::vector<CRect*>							vpTeamNameRect;
-	std::vector<D3D12_VIEWPORT>					vd3dViewport;
-	std::vector<D3D12_RECT>						vd3dScissorRect;
-
-	for (int i = 0; i < m_vwstrTeamName.size(); i++)
+	if (pd3dRTVHeap != nullptr)
 	{
-		int W, H;
-		CTextObject *pTemp = m_pFont->Set3DText(W, H, m_vwstrTeamName[i].c_str(), XMFLOAT2(1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f));
-		vpTeamTextObject.emplace_back(pTemp);
+		d3dHeapCPUHandle = pd3dRTVHeap->GetCPUDescriptorHandleForHeapStart();
+		d3dHeapGPUHandle = pd3dRTVHeap->GetGPUDescriptorHandleForHeapStart();
 
-		CRect *pRect = new CRect(pd3dDevice, pd3dCommandList, XMFLOAT2(0.0f, 0.0f), XMFLOAT2(float(W) * 0.04f, float(H) * 0.04f));
-		D3D12_VIEWPORT viewport = { 0, 0, float(W), float(H), 0.0f, 1.0f };
-		vd3dViewport.emplace_back(viewport);
+		std::vector<CTextObject*>					vpTeamTextObject;
+		std::vector<ID3D12Resource*>				vpd3dTeamNameTexture;
+		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>	vd3dTeamTextureRTVCPUHandle;
+		std::vector<CRect*>							vpTeamNameRect;
+		std::vector<D3D12_VIEWPORT>					vd3dViewport;
+		std::vector<D3D12_RECT>						vd3dScissorRect;
 
-		D3D12_RECT scissorRect = { 0, 0, W, H };
-		vd3dScissorRect.emplace_back(scissorRect);
+		for (int i = 0; i < m_vwstrTeamName.size(); i++)
+		{
+			int W, H;
+			CTextObject *pTemp = m_pFont->Set3DText(W, H, m_vwstrTeamName[i].c_str(), XMFLOAT2(1.0f, 1.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f));
+			vpTeamTextObject.emplace_back(pTemp);
 
-		ID3D12Resource *pTextTexture;
-		CreateNameTexture(pd3dDevice, pd3dCommandList, &pTextTexture, W, H);
-		vpd3dTeamNameTexture.emplace_back(pTextTexture);
+			CRect *pRect = new CRect(pd3dDevice, pd3dCommandList, XMFLOAT2(0.0f, 0.0f), XMFLOAT2(float(W) * 0.04f, float(H) * 0.04f));
+			D3D12_VIEWPORT viewport = { 0, 0, float(W), float(H), 0.0f, 1.0f };
+			vd3dViewport.emplace_back(viewport);
 
-		D3D12_RENDER_TARGET_VIEW_DESC d3dDesc;
-		d3dDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		d3dDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		d3dDesc.Texture2D.MipSlice = 0;
-		d3dDesc.Texture2D.PlaneSlice = 0;
+			D3D12_RECT scissorRect = { 0, 0, W, H };
+			vd3dScissorRect.emplace_back(scissorRect);
 
-		pd3dDevice->CreateRenderTargetView(pTextTexture, &d3dDesc, d3dHeapCPUHandle);
-		vd3dTeamTextureRTVCPUHandle.emplace_back(d3dHeapCPUHandle);
+			ID3D12Resource *pTextTexture;
+			CreateNameTexture(pd3dDevice, pd3dCommandList, &pTextTexture, W, H);
+			vpd3dTeamNameTexture.emplace_back(pTextTexture);
 
-		d3dHeapCPUHandle.ptr += ::gnRtvDescriptorIncrementSize;
-		d3dHeapGPUHandle.ptr += ::gnRtvDescriptorIncrementSize;
+			D3D12_RENDER_TARGET_VIEW_DESC d3dDesc;
+			d3dDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+			d3dDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			d3dDesc.Texture2D.MipSlice = 0;
+			d3dDesc.Texture2D.PlaneSlice = 0;
 
-		m_pUserInterface->SetTeamNameTexture(pd3dDevice, pTextTexture, pRect);
+			pd3dDevice->CreateRenderTargetView(pTextTexture, &d3dDesc, d3dHeapCPUHandle);
+			vd3dTeamTextureRTVCPUHandle.emplace_back(d3dHeapCPUHandle);
+
+			d3dHeapCPUHandle.ptr += ::gnRtvDescriptorIncrementSize;
+			d3dHeapGPUHandle.ptr += ::gnRtvDescriptorIncrementSize;
+
+			m_pUserInterface->SetTeamNameTexture(pd3dDevice, pTextTexture, pRect);
+		}
+
+		CScene::SetDescHeapsAndGraphicsRootSignature(pd3dCommandList);
+
+		for (int i = 0; i < vpd3dTeamNameTexture.size(); i++)
+		{
+			pd3dCommandList->OMSetRenderTargets(1, &vd3dTeamTextureRTVCPUHandle[i], false, NULL);
+
+			pd3dCommandList->RSSetViewports(1, &vd3dViewport[i]);
+			pd3dCommandList->RSSetScissorRects(1, &vd3dScissorRect[i]);
+
+			m_pFontShader->OnPrepareRender(pd3dCommandList);
+
+			m_pFont->OnPrepareRender(pd3dCommandList);
+			vpTeamTextObject[i]->Render(pd3dCommandList);
+
+			vpTeamTextObject[i]->Release();
+			TransitionResourceState(pd3dCommandList, vpd3dTeamNameTexture[i], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+		}
+
+		pd3dRTVHeap->Release();
 	}
-
-	CScene::SetDescHeapsAndGraphicsRootSignature(pd3dCommandList);
-
-	for (int i = 0; i < vpd3dTeamNameTexture.size(); i++)
+	else
 	{
-		pd3dCommandList->OMSetRenderTargets(1, &vd3dTeamTextureRTVCPUHandle[i], false, NULL);
-
-		pd3dCommandList->RSSetViewports(1, &vd3dViewport[i]);
-		pd3dCommandList->RSSetScissorRects(1, &vd3dScissorRect[i]);
-
-		m_pFontShader->OnPrepareRender(pd3dCommandList);
-
-		m_pFont->OnPrepareRender(pd3dCommandList);
-		vpTeamTextObject[i]->Render(pd3dCommandList);
-
-		vpTeamTextObject[i]->Release();
-		TransitionResourceState(pd3dCommandList, vpd3dTeamNameTexture[i], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+		std::cout << "RTV힙이 생성되지 않음\n";
 	}
-
-	pd3dRTVHeap->Release();
 }
 
 void CBattleScene::CreateNameTexture(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12Resource **pd3dResource, int nWidth, int nHeight)
@@ -3778,6 +3781,7 @@ void CBattleScene::CheckCollision()
 					AddSprite(SPRITE_EFFECT_INDEX_SWORD_HIT_2, pSword->GetBladePos(), EFFECT_ANIMATION_TYPE_ONE, xmf4Color);
 
 					m_pPlayer->AddHitObject(Enemy);
+					m_pPlayer->GetCamera()->SetShake();
 
 					gFmodSound.PlayFMODSound(gFmodSound.m_pSoundSaberHit1);
 				}
@@ -4313,10 +4317,10 @@ void CBattleScene::ApplyRecvInfo(PKT_ID pktID, LPVOID pktData)
 		wchar_t pstrText[16];
 
 		wsprintfW(pstrText, L"%d", pktScore->RedScore);
-		ChangeText(m_pRedScoreText, pstrText, XMFLOAT2(-0.05f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.5f, 0.0f, 0.0f, 0.9f), RIGHT_ALIGN);
+		m_pFont->ChangeText(m_pRedScoreText, pstrText, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), RIGHT_ALIGN);
 
 		wsprintfW(pstrText, L"%d", pktScore->BlueScore);
-		ChangeText(m_pBlueScoreText, pstrText, XMFLOAT2(0.02f, 0.88f), XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.5f, 0.9f), LEFT_ALIGN);
+		m_pFont->ChangeText(m_pBlueScoreText, pstrText, XMFLOAT2(2.0f, 2.0f), XMFLOAT2(1.0f, 1.0f), LEFT_ALIGN);
 		break;
 	}
 	case PKT_ID_PICK_ITEM:
@@ -4396,9 +4400,12 @@ void CBattleScene::ApplyRecvInfo(PKT_ID pktID, LPVOID pktData)
 		break;
 	}
 	case PKT_ID_LOAD_COMPLETE_ALL:
+	{
 		m_pUserInterface->BattleNotifyStart();
 		break;
+	}
 	case PKT_ID_GAME_END:
+	{
 		PKT_GAME_END *pPacket = (PKT_GAME_END*)pktData;
 
 		bool bWin = CScene::m_nMyTeam == pPacket->WinTeam;
@@ -4406,6 +4413,14 @@ void CBattleScene::ApplyRecvInfo(PKT_ID pktID, LPVOID pktData)
 		m_pUserInterface->BattleNotifyEnd(bWin);
 		m_bGameEnd = true;
 		break;
+	}
+	case PKT_ID_KILL_MESSAGE:
+	{
+		PKT_KILL_MESSAGE *pPacket = (PKT_KILL_MESSAGE*)pktData;
+
+		m_pUserInterface->AddKillInfo(pPacket->kill_name, static_cast<TEAM_TYPE>(pPacket->kill_team), pPacket->die_name, static_cast<TEAM_TYPE>(pPacket->die_team));
+		break;
+	}
 	}
 }
 
@@ -4610,6 +4625,7 @@ void CColonyScene::StartScene(bool bBGMStop)
 {
 	if (bBGMStop) gFmodSound.StopFMODSound(gFmodSound.m_pBGMChannel);
 	gFmodSound.PlayFMODSoundLoop(gFmodSound.m_pSoundColonyBGM, &(gFmodSound.m_pBGMChannel));
+	gFmodSound.m_pBGMChannel->setVolume(0.3f);
 }
 
 void CColonyScene::EndScene()
@@ -4839,6 +4855,7 @@ void CSpaceScene::StartScene(bool bBGMStop)
 {
 	if (bBGMStop) gFmodSound.StopFMODSound(gFmodSound.m_pBGMChannel);
 	gFmodSound.PlayFMODSoundLoop(gFmodSound.m_pSoundSpaceBGM, &(gFmodSound.m_pBGMChannel));
+	gFmodSound.m_pBGMChannel->setVolume(0.3f);
 }
 
 void CSpaceScene::EndScene()
