@@ -18,10 +18,10 @@ void Framawork::init()
 
 	repository_ = new Repository();
 
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < MAX_USER; i++)
 		clients_[i].in_use_ = false;
 
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < MAX_ROOM; ++i)
 		rooms_[i].init(repository_);
 
 #ifdef WITH_DATA_BASE
@@ -480,48 +480,48 @@ int Framawork::thread_process()
 		}
 		else if (EVENT_TYPE_BEAM_SNIPER == overlapped->event_type_)
 		{
-		if (rooms_[overlapped->room_num_].get_playing())
-		{
-			auto object = rooms_[overlapped->room_num_].get_object(index);
-			float elapsed_time;
-
-			if (overlapped->elapsed_time_ <= 0.001f)
-				elapsed_time = 0.016f;
-			else
-				elapsed_time = overlapped->elapsed_time_;
-
-			object->animate(elapsed_time, rooms_[overlapped->room_num_].get_map());
-
-			float distance = 2000.0f;
-			rooms_[overlapped->room_num_].check_collision_player_to_vector(index, 2000.0f, &distance);
-			
-			PKT_CREATE_EFFECT pkt_ce;
-			pkt_ce.PktId = PKT_ID_CREATE_EFFECT;
-			pkt_ce.PktSize = sizeof(PKT_CREATE_EFFECT);
-			pkt_ce.EftAnitType = EFFECT_ANIMATION_TYPE_ONE;
-			pkt_ce.efType = EFFECT_TYPE_BEAM_SNIPER;
-			pkt_ce.xmf3Look = object->get_look();
-			pkt_ce.xmf3Position = object->get_position();
-			pkt_ce.fDistance = distance;
-
-			send_packet_to_room_player(overlapped->room_num_, (char*)&pkt_ce);
-
-			if (object->is_delete())
+			if (rooms_[overlapped->room_num_].get_playing())
 			{
-				object->set_use(false);
+				auto object = rooms_[overlapped->room_num_].get_object(index);
+				float elapsed_time;
+
+				if (overlapped->elapsed_time_ <= 0.001f)
+					elapsed_time = 0.016f;
+				else
+					elapsed_time = overlapped->elapsed_time_;
+
+				object->animate(elapsed_time, rooms_[overlapped->room_num_].get_map());
+
+				float distance = 2000.0f;
+				rooms_[overlapped->room_num_].check_collision_player_to_vector(index, 2000.0f, &distance);
+
+				PKT_CREATE_EFFECT pkt_ce;
+				pkt_ce.PktId = PKT_ID_CREATE_EFFECT;
+				pkt_ce.PktSize = sizeof(PKT_CREATE_EFFECT);
+				pkt_ce.EftAnitType = EFFECT_ANIMATION_TYPE_ONE;
+				pkt_ce.efType = EFFECT_TYPE_BEAM_SNIPER;
+				pkt_ce.xmf3Look = object->get_look();
+				pkt_ce.xmf3Position = object->get_position();
+				pkt_ce.fDistance = distance;
+
+				send_packet_to_room_player(overlapped->room_num_, (char*)&pkt_ce);
+
+				if (object->is_delete())
+				{
+					object->set_use(false);
+				}
+				else
+				{
+					using namespace std::chrono;
+					add_event(index, overlapped->room_num_, EVENT_TYPE_BEAM_SNIPER, high_resolution_clock::now() + 16ms);
+				}
 			}
-			else
-			{
-				using namespace std::chrono;
-				add_event(index, overlapped->room_num_, EVENT_TYPE_BEAM_SNIPER, high_resolution_clock::now() + 16ms);
-			}
-		}
-		delete overlapped;
+			delete overlapped;
 		}
 		else
 		{
-			std::cout << "UNKNOWN EVENT\n";
-			while (true);
+			std::cout << "UNKNOWN EVENT : " << overlapped->event_type_ << "\n";
+			delete overlapped;
 		}
 	}
 }
@@ -613,7 +613,7 @@ int Framawork::accept_process()
 
 		send_packet_to_player(new_id, (char*)&pkt_cn);
 
-		for (int i = 0; i < 10; ++i)
+		for (int i = 0; i < MAX_ROOM; ++i)
 		{
 			if (rooms_[i].get_is_use())
 			{
@@ -751,7 +751,7 @@ void Framawork::disconnect_client(int id)
 int Framawork::search_client_in_room(SOCKET socket)
 {
 	int room_num = -1;
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < MAX_ROOM; ++i)
 	{
 		if (!rooms_[i].get_is_use()) continue;
 		if (!rooms_[i].search_client(socket)) continue;
@@ -772,34 +772,39 @@ void Framawork::process_packet(int id, char* packet)
 		if (room_num != -1)
 		{
 			int player = rooms_[room_num].find_player_by_socket(clients_[id].socket_);
+			auto object = rooms_[room_num].get_object(player);
 			if (rooms_[room_num].get_playing())
 			{
+
 				rooms_[room_num].set_player_worldmatrix(player, ((PKT_PLAYER_INFO*)packet)->WorldMatrix);
 				if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_1_ONE ||
 					((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_2_ONE ||
 					((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_3_ONE)
 				{
-					if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_1_ONE)
-						if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.33f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.34f)
-						{
-							int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
-							using namespace std::chrono;
-							add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
-						}
-					if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_2_ONE)
-						if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.33f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.34f)
-						{
-							int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
-							using namespace std::chrono;
-							add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
-						}
-					if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_3_ONE)
-						if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.51f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.52f)
-						{
-							int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
-							using namespace std::chrono;
-							add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
-						}
+					if (!object->get_is_die())
+					{
+						if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_1_ONE)
+							if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.33f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.34f)
+							{
+								int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
+								using namespace std::chrono;
+								add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
+							}
+						if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_2_ONE)
+							if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.33f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.34f)
+							{
+								int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
+								using namespace std::chrono;
+								add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
+							}
+						if (((PKT_PLAYER_INFO*)packet)->Player_Up_Animation == ANIMATION_TYPE_BEAM_SABER_3_ONE)
+							if (((PKT_PLAYER_INFO*)packet)->UpAnimationPosition > 0.51f && ((PKT_PLAYER_INFO*)packet)->UpAnimationPosition < 0.52f)
+							{
+								int Index = rooms_[room_num].add_object(OBJECT_TYPE_SABER, ((PKT_PLAYER_INFO*)packet)->WorldMatrix, player);
+								using namespace std::chrono;
+								add_event(Index, room_num, EVENT_TYPE_SABER, high_resolution_clock::now() + 16ms);
+							}
+					}
 				}
 				send_packet_to_room_player(room_num, packet);
 			}
@@ -1118,7 +1123,7 @@ void Framawork::process_packet(int id, char* packet)
 				send_packet_to_all_player((char*)&pkt_rd);
 			}
 
-			for (int i = 0; i < 10; ++i)
+			for (int i = 0; i < MAX_ROOM; ++i)
 			{
 				if (rooms_[i].get_is_use())
 				{
@@ -1177,7 +1182,7 @@ void Framawork::process_packet(int id, char* packet)
 			rooms_[room_num].disconnect_client(clients_[id].socket_);
 			clients_[id].in_room_ = false;
 
-			for (int i = 0; i < 10; ++i)
+			for (int i = 0; i < MAX_ROOM; ++i)
 			{
 				if (rooms_[i].get_is_use())
 				{
@@ -1242,13 +1247,13 @@ void Framawork::process_packet(int id, char* packet)
 	}
 	case PKT_ID_CREATE_ACCOUT:
 	{
-		PKT_CREATE_ACCOUNT* packet = reinterpret_cast<PKT_CREATE_ACCOUNT*>(packet);
+		PKT_CREATE_ACCOUNT* dbpkt_ca = reinterpret_cast<PKT_CREATE_ACCOUNT*>(packet);
 #ifdef WITH_DATA_BASE
 		DB_PKT_CREATE_ACCOUNT pkt_ca;
 		pkt_ca.PktId = DB_PKT_ID_CREATE_ACCOUNT;
 		pkt_ca.PktSize = sizeof(DB_PKT_CREATE_ACCOUNT);
-		lstrcpynW(pkt_ca.id, packet->id, MAX_NAME_LENGTH);
-		lstrcpynW(pkt_ca.pass, packet->pass, MAX_NAME_LENGTH);
+		lstrcpynW(pkt_ca.id, dbpkt_ca->id, MAX_NAME_LENGTH);
+		lstrcpynW(pkt_ca.pass, dbpkt_ca->pass, MAX_NAME_LENGTH);
 		send_packet_to_player(DBSERVER_KEY, (char*)&pkt_ca);
 #endif
 		break;
@@ -1287,7 +1292,7 @@ void Framawork::send_packet_to_player(int id, char* packet)
 
 void Framawork::send_packet_to_all_player(char* packet)
 {
-	for (int i = 0; i < 1000; ++i)
+	for (int i = 0; i < MAX_USER; ++i)
 	{
 		if (!clients_[i].in_use_) continue;
 		if (clients_[i].in_room_) continue;
@@ -1320,7 +1325,7 @@ void Framawork::send_packet_to_team_player(int room, char * packet, char team)
 int Framawork::find_empty_room()
 {
 	int room_num = -1;
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < MAX_ROOM; ++i)
 	{
 		if (rooms_[i].get_is_use()) continue;
 		room_num = i;

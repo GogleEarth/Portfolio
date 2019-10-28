@@ -3781,7 +3781,7 @@ void CBattleScene::CheckCollision()
 					AddSprite(SPRITE_EFFECT_INDEX_SWORD_HIT_2, pSword->GetBladePos(), EFFECT_ANIMATION_TYPE_ONE, xmf4Color);
 
 					m_pPlayer->AddHitObject(Enemy);
-					m_pPlayer->GetCamera()->SetShake();
+					m_pPlayer->GetCamera()->SetShake(SK_ATTACK_SCALE);
 
 					gFmodSound.PlayFMODSound(gFmodSound.m_pSoundSaberHit1);
 				}
@@ -4435,7 +4435,7 @@ void CBattleScene::LeavePlayer(int nServerIndex)
 
 CColonyScene::CColonyScene() : CBattleScene()
 {
-	m_fGravAcc = -9.8f;
+	m_fGravAcc = GRAVITY;
 }
 
 CColonyScene::~CColonyScene()
@@ -4625,7 +4625,7 @@ void CColonyScene::StartScene(bool bBGMStop)
 {
 	if (bBGMStop) gFmodSound.StopFMODSound(gFmodSound.m_pBGMChannel);
 	gFmodSound.PlayFMODSoundLoop(gFmodSound.m_pSoundColonyBGM, &(gFmodSound.m_pBGMChannel));
-	gFmodSound.m_pBGMChannel->setVolume(0.3f);
+	//gFmodSound.m_pBGMChannel->setVolume(0.3f);
 }
 
 void CColonyScene::EndScene()
@@ -4660,7 +4660,7 @@ void CColonyScene::ApplyRecvInfo(PKT_ID pktID, LPVOID pktData)
 			break;
 		case MAP_EVENT_TYPE::MAP_EVENT_TYPE_END:
 			std::cout << "지상맵 이벤트 끝\n";
-			m_fGravAcc = -9.8f;
+			m_fGravAcc = GRAVITY;
 			break;
 		}
 		break;

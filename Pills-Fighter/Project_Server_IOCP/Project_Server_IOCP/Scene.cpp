@@ -101,6 +101,8 @@ void Scene::inert_objects_from_file(char* file_name, int group)
 			break;
 		}
 	}
+
+	::fclose(file);
 }
 
 void Scene::init(Repository * repository)
@@ -835,7 +837,7 @@ void GroundScene::start_event()
 void GroundScene::end_event()
 {
 	Scene::end_event();
-	gravity_ = -9.8f;
+	gravity_ = -4.9f;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
